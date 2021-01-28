@@ -1,30 +1,35 @@
 ﻿using UnityEngine;
 
-[ExecuteInEditMode]
-public class MorphSet : MonoBehaviour
+namespace MorphEditor
 {
-    public MorphData morphData;
-    private SkinnedMeshRenderer smr;
-    private void Awake()
+    [RequireComponent(typeof(SkinnedMeshRenderer))]
+    [ExecuteInEditMode]
+    public class MorphSet : MonoBehaviour
     {
-        smr = GetComponent<SkinnedMeshRenderer>();
-        UpdateBlendShape();
-    }
-    public void UpdateBlendShape()
-    {
-        if (!morphData)
-            return;
-        for (int shape = 0; shape < morphData.shapeCount; shape++)
+        public MorphData morphData;
+        internal SkinnedMeshRenderer smr;
+        private void Awake()
         {
-            MorphShape morphShape = morphData.shapes[shape];
-            if (smr.sharedMesh.GetBlendShapeIndex(morphShape.shapeName) >= 0)
-                continue;
-            foreach (MorphFrame morphFrame in morphShape.frames)
-            {
-                smr.sharedMesh.AddBlendShapeFrame(morphShape.shapeName, morphFrame.weight, morphFrame.deltaVertices, null, null);
-            }
+            smr = GetComponent<SkinnedMeshRenderer>();
+            UpdateBlendShape();
         }
-        smr.sharedMesh.RecalculateNormals();
-        smr.sharedMesh.RecalculateTangents();
+        public void UpdateBlendShape()
+        {
+            if (!morphData)
+                return;
+            smr.sharedMesh.ClearBlendShapes();
+            for (int shape = 0; shape < morphData.shapeCount; shape++)
+            {
+                MorphShape morphShape = morphData.shapes[shape];
+                if (smr.sharedMesh.GetBlendShapeIndex(morphShape.shapeName) >= 0)
+                    continue;
+                foreach (MorphFrame morphFrame in morphShape.frames)
+                {
+                    smr.sharedMesh.AddBlendShapeFrame(morphShape.shapeName, morphFrame.weight, morphFrame.deltaVertices, null, null);
+                }
+            }
+            smr.sharedMesh.RecalculateNormals();
+            smr.sharedMesh.RecalculateTangents();
+        }
     }
 }

@@ -8,17 +8,19 @@ namespace MorphEditor
     public class GizmoUtilities
     {
         public static bool enable;
+        public static MorphEditor editor;
 
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected | GizmoType.Active)]
-        static void DrawGizmo(SkinnedMeshRenderer smr, GizmoType type)
+        static void DrawGizmo(MorphSet ms, GizmoType type)
         {
-            enable = MorphInspector.editMode && MorphInspector.smr && smr.GetHashCode() == MorphInspector.smr.GetHashCode();
+            enable = MorphInspector.editMode && editor.ms && ms.GetHashCode() == editor.ms.GetHashCode();
             if (!enable)
                 return;
-            var mesh = smr.sharedMesh;
-            foreach (var pos in mesh.vertices)
+            var mesh = ms.GetComponent<SkinnedMeshRenderer>().sharedMesh;
+            Gizmos.color = Color.green;
+            foreach (int i in editor.mark)
             {
-                Gizmos.DrawSphere(smr.transform.TransformPoint(pos), 0.02f);
+                Gizmos.DrawSphere(ms.transform.TransformPoint(mesh.vertices[i]), 0.01f);
             }
         }
     }
