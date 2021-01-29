@@ -25,7 +25,10 @@ namespace MorphEditor
                 data = ms.morphData;
             else
                 CreateAsset();
-            dVertices = data.shapes[shapeIndex].frames[0].deltaVertices;
+            if (data.shapeCount <= shapeIndex || data.shapes[shapeIndex] == null)
+                CreateNewMorph(smr, shapeIndex);
+
+                dVertices = data.shapes[shapeIndex].frames[0].deltaVertices;
             pointFilter.points = smr.sharedMesh.vertices;
             mark.Clear();
             smr.sharedMesh.GetBlendShapeFrameVertices(shapeIndex, 0, dVertices, null, null);
@@ -34,6 +37,25 @@ namespace MorphEditor
                 if (dVertices[i] != Vector3.zero)
                     mark.Add(i);
             }
+        }
+        public void CreateNewMorph(SkinnedMeshRenderer smr, int shapeIndex)
+        {
+            Mesh mesh = smr.sharedMesh;
+            MorphShape shapeData = new MorphShape();
+            data.shapeCount++;
+            shapeData.shapeName = mesh.GetBlendShapeName(shapeIndex);
+            int frameCount = mesh.GetBlendShapeFrameCount(shapeIndex);
+            MorphFrame[] frames = new MorphFrame[frameCount];
+            for (int j = 0; j < frameCount; j++)
+            {
+                MorphFrame frameData = new MorphFrame();
+                frameData.deltaVertices = new Vector3[mesh.vertexCount];
+                frameData.weight = mesh.GetBlendShapeFrameWeight(shapeIndex, j);
+                mesh.GetBlendShapeFrameVertices(shapeIndex, j, frameData.deltaVertices, null, null);
+                frames[j] = frameData;
+            }
+            shapeData.frames = frames;
+            data.shapes.Add(shapeData);
         }
         public void Enable()
         {
@@ -48,18 +70,28 @@ namespace MorphEditor
                     dVertices[i] = Vector3.zero;
             }
             data.shapes[shapeIndex].frames[0].deltaVertices = dVertices;
-            string savePath = EditorUtility.SaveFilePanel("Save Asset", "./", "NewMorphData", "asset");
-            if (!string.IsNullOrEmpty(savePath) && savePath.StartsWith(Application.dataPath) && savePath.EndsWith(".asset"))
+            if (AssetDatabase.Contains(data))
             {
-                int subIndex = Application.dataPath.Length;
-                savePath = "Assets" + savePath.Substring(subIndex, savePath.Length - subIndex);
-                AssetDatabase.CreateAsset(data, savePath);
-                
-                ms.morphData = data;
-                //EditorPrefs.SetString("morphAssetPath", savePath);
+                AssetDatabase.Refresh();
+                AssetDatabase.SaveAssets();
+                ms.UpdateBlendShape();
             }
             else
-                Debug.LogError("Please Select in " + Application.dataPath + " with correct filename.");
+            {
+                string savePath = EditorUtility.SaveFilePanel("Save Asset", "./", "NewMorphData", "asset");
+                if (!string.IsNullOrEmpty(savePath) && savePath.StartsWith(Application.dataPath) && savePath.EndsWith(".asset"))
+                {
+                    int subIndex = Application.dataPath.Length;
+                    savePath = "Assets" + savePath.Substring(subIndex, savePath.Length - subIndex);
+                    AssetDatabase.CreateAsset(data, savePath);
+
+                    ms.morphData = data;
+                    ms.UpdateBlendShape();
+                    //EditorPrefs.SetString("morphAssetPath", savePath);
+                }
+                else
+                    Debug.LogError("Please Select in " + Application.dataPath + " with correct filename.");
+            }
         }
         public void Disable()
         {
@@ -68,24 +100,9 @@ namespace MorphEditor
         public void CreateAsset()
         {
             data = ScriptableObject.CreateInstance<MorphData>();
-            Mesh mesh = smr.sharedMesh;
-            data.shapeCount = mesh.blendShapeCount;
             for (int i = 0; i < data.shapeCount; i++)
             {
-                MorphShape shapeData = new MorphShape();
-                shapeData.shapeName = mesh.GetBlendShapeName(i);
-                int frameCount = mesh.GetBlendShapeFrameCount(i);
-                MorphFrame[] frames = new MorphFrame[frameCount];
-                for (int j = 0; j < frameCount; j++)
-                {
-                    MorphFrame frameData = new MorphFrame();
-                    frameData.deltaVertices = new Vector3[mesh.vertexCount];
-                    frameData.weight = mesh.GetBlendShapeFrameWeight(i, j);
-                    mesh.GetBlendShapeFrameVertices(i, j, frameData.deltaVertices, null, null);
-                    frames[j] = frameData;
-                }
-                shapeData.frames = frames;
-                data.shapes.Add(shapeData);
+                CreateNewMorph(smr, i);
             }
         }
     }
